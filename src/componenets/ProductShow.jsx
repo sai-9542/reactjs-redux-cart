@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { baseURL } from "../axios/baseURL";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,6 +15,10 @@ const ProductShow = () => {
 
   const dispatch = useDispatch();
   const cart = useSelector((state) => state.cart);
+
+  const myRef = useRef(null);
+  const commentsToScroll = () =>
+    myRef.current?.scrollIntoView({ behavior: "smooth" });
 
   // useEffect(() => {
   //   const productDetails = async () => {
@@ -77,7 +81,7 @@ const ProductShow = () => {
                             img === mainImg ? "cursor-not-allowed" : ""
                           }`}
                           onClick={() => setMainImg(img)}
-                           key={img}
+                          key={img}
                         />
                       ))}
                   </div>
@@ -88,15 +92,17 @@ const ProductShow = () => {
                   <p className="text-gray-600 mb-4">SKU: {product.sku}</p>
                   <div className="mb-4">
                     <span className="text-2xl font-bold mr-2">
-                      $
-                      {calculateDiscountedPrice(product)}
+                      ${calculateDiscountedPrice(product)}
                     </span>
                     <span className="text-gray-500 line-through">
                       {" "}
                       ${product.price}
                     </span>
                   </div>
-                  <div className="flex items-center mb-4">
+                  <div
+                    className="flex items-center mb-4 cursor-pointer"
+                    onClick={commentsToScroll}
+                  >
                     {Array.from({ length: 5 }).map((_, index) => (
                       <svg
                         key={index}
@@ -209,7 +215,9 @@ const ProductShow = () => {
                         if (isAdded) {
                           dispatch(removeFromCart(product));
                         } else {
-                          dispatch(addToCart({product: product, qty: productQty}));
+                          dispatch(
+                            addToCart({ product: product, qty: productQty })
+                          );
                         }
                       }}
                     >
@@ -259,10 +267,153 @@ const ProductShow = () => {
                   </div>
                 </div>
               </div>
+              <div ref={myRef}>
+                <Comments reviews={product.reviews} />
+              </div>
             </div>
           </div>
         ): "<p>No data found</p>")}
     </>
+  );
+};
+
+const Comments = ({ reviews }) => {
+  const [userReviews, setUserReviews] = useState(reviews);
+  const [name, setName] = useState(null);
+  const [comment, setComment] = useState(null);
+  const [inputError, setInputError] = useState({ name: "", comment: "" });
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!name) {
+      setInputError({ name: "Please fill name" });
+      return;
+    }
+
+    if (!comment) {
+      setInputError((prev) => ({ ...prev, comment: "Please fill comment" }));
+      return;
+    }
+
+    setInputError({ name: "", comment: "" });
+
+    const newReview = {
+      comment: comment,
+      date: new Date(),
+      rating: 5,
+      reviewerEmail: null,
+      reviewerName: name,
+    };
+
+    setUserReviews((prevReviews) => [...prevReviews, newReview]);
+    setName("");
+    setComment("");
+  };
+  //console.log(userReviews);
+
+  return (
+    <div className="bg-gray-100 p-6">
+      <h2 className="text-lg font-bold mb-4">Comments</h2>
+      <div className="flex flex-col space-y-4">
+        {userReviews.length > 0 &&
+          userReviews.map((review) => (
+            <div
+              className="bg-white p-4 rounded-lg shadow-md"
+              key={review.reviewerEmail}
+            >
+              <h3 className="text-lg font-bold flex">
+                {review.reviewerName}
+                <span className="flex ml-2 mt-1">
+                  {Array.from({ length: review.rating }).map((_, index) => (
+                    <svg
+                      key={index}
+                      aria-hidden="true"
+                      className="h-5 w-5 text-yellow-300"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </span>
+              </h3>
+              {/* <p className="text-gray-700 text-sm mb-2">
+                {review.reviewerEmail}
+              </p> */}
+              <p className="text-gray-700 text-sm mb-2">
+                Posted on{" "}
+                {new Date(review.date).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </p>
+              <p className="text-gray-700">{review.comment}</p>
+            </div>
+          ))}
+
+        <form
+          className="bg-white p-4 rounded-lg shadow-md"
+          onSubmit={(e) => handleSubmit(e)}
+        >
+          <h3 className="text-lg font-bold mb-2">Add a comment</h3>
+          <div className="mb-4">
+            <label
+              className="block text-gray-700 font-bold mb-2"
+              htmlFor="name"
+            >
+              Name
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="name"
+              type="text"
+              placeholder="Enter your name"
+              onChange={(e) => setName(e.target.value)}
+              value={name}
+            />
+            <small className="text-red-555">{inputError.name || ""}</small>
+          </div>
+          <div className="mb-4">
+            <label
+              className="block text-gray-700 font-bold mb-2"
+              htmlFor="comment"
+            >
+              Comment
+            </label>
+            <textarea
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="comment"
+              rows="3"
+              placeholder="Enter your comment"
+              onChange={(e) => setComment(e.target.value)}
+              value={comment}
+            ></textarea>
+            <small className="text-red-555">{inputError.comment || ""}</small>
+          </div>
+          <div className="mb-4">
+            <div className="flex">
+              {Array.from({ length: 5 }).map((_, index) => (
+                    <svg
+                      key={index}
+                      aria-hidden="true"
+                      className="h-5 w-5 text-yellow-300"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+</div>
+          </div>
+          <button className="bg-cyan-500 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            Submit
+          </button>
+        </form>
+      </div>
+    </div>
   );
 };
 
